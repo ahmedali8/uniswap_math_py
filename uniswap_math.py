@@ -7,52 +7,135 @@ MIN_TICK = -887272
 MAX_TICK = 887272
 
 def price_to_tick(price):
-    """Converts a price to a tick value."""
+    """
+    Converts a price to a tick value.
+    
+    Parameters:
+        price (float): The price value to convert.
+    
+    Returns:
+        int: Corresponding tick value.
+    """
     return math.floor(math.log(price, 1.0001))
 
 def price_to_sqrtP(price):
-    """Converts a price to a square root price representation in Q64.96 format."""
+    """
+    Converts a price to a square root price representation in Q64.96 format.
+    
+    Parameters:
+        price (float): The price value to convert.
+    
+    Returns:
+        int: Square root price representation.
+    """
     return int(math.sqrt(price) * Q96)
 
 def tick_to_sqrtP(tick):
-    """Converts a tick value to a square root price."""
+    """
+    Converts a tick value to a square root price.
+    
+    Parameters:
+        tick (int): The tick value to convert.
+    
+    Returns:
+        int: Corresponding square root price.
+    """
     return int((math.pow(1.0001, tick) ** 0.5) * Q96)
 
 def calc_liquidity_0(amount_0, sqrtP_lower, sqrtP_upper):
-    """Calculates liquidity from the given amount of token 0."""
+    """
+    Calculates liquidity from the given amount of token 0.
+    
+    Parameters:
+        amount_0 (int): The amount of token 0.
+        sqrtP_lower (int): The lower bound square root price.
+        sqrtP_upper (int): The upper bound square root price.
+    
+    Returns:
+        int: Calculated liquidity value.
+    """
     if sqrtP_lower > sqrtP_upper:
         sqrtP_lower, sqrtP_upper = sqrtP_upper, sqrtP_lower
     return (amount_0 * (sqrtP_lower * sqrtP_upper) / Q96) / (sqrtP_upper - sqrtP_lower)
 
 def calc_liquidity_1(amount_1, sqrtP_lower, sqrtP_upper):
-    """Calculates liquidity from the given amount of token 1."""
+    """
+    Calculates liquidity from the given amount of token 1.
+    
+    Parameters:
+        amount_1 (int): The amount of token 1.
+        sqrtP_lower (int): The lower bound square root price.
+        sqrtP_upper (int): The upper bound square root price.
+    
+    Returns:
+        int: Calculated liquidity value.
+    """
     if sqrtP_lower > sqrtP_upper:
         sqrtP_lower, sqrtP_upper = sqrtP_upper, sqrtP_lower
     return amount_1 * Q96 / (sqrtP_upper - sqrtP_lower)
 
 def calc_liquidity(amount_0, amount_1, sqrtP_current, sqrtP_lower, sqrtP_upper):
-    """Calculates the liquidity from the given amounts of tokens."""
+    """
+    Calculates the liquidity from the given amounts of tokens.
+    
+    Parameters:
+        amount_0 (int): The amount of token 0.
+        amount_1 (int): The amount of token 1.
+        sqrtP_current (int): The current square root price.
+        sqrtP_lower (int): The lower bound square root price.
+        sqrtP_upper (int): The upper bound square root price.
+    
+    Returns:
+        int: The minimum liquidity value calculated from token 0 and token 1.
+    """
     liquidity_0 = calc_liquidity_0(amount_0, sqrtP_current, sqrtP_upper)
     liquidity_1 = calc_liquidity_1(amount_1, sqrtP_current, sqrtP_lower)
     return int(min(liquidity_0, liquidity_1))
 
 def calc_amount_0(liquidity, sqrtP_lower, sqrtP_upper):
-    """Calculates the amount of token 0 given liquidity and price bounds."""
+    """
+    Calculates the amount of token 0 given liquidity and price bounds.
+
+    Parameters:
+        liquidity (int): The available liquidity in the pool.
+        sqrtP_lower (int): The lower bound square root price.
+        sqrtP_upper (int): The upper bound square root price.
+
+    Returns:
+        int: The amount of token 0.
+    """
     if sqrtP_lower > sqrtP_upper:
         sqrtP_lower, sqrtP_upper = sqrtP_upper, sqrtP_lower
     return int(liquidity * Q96 * (sqrtP_upper - sqrtP_lower) / sqrtP_lower / sqrtP_upper)
 
 def calc_amount_1(liquidity, sqrtP_lower, sqrtP_upper):
-    """Calculates the amount of token 1 given liquidity and price bounds."""
+    """
+    Calculates the amount of token 1 given liquidity and price bounds.
+
+    Parameters:
+        liquidity (int): The available liquidity in the pool.
+        sqrtP_lower (int): The lower bound square root price.
+        sqrtP_upper (int): The upper bound square root price.
+
+    Returns:
+        int: The amount of token 1.
+    """
     if sqrtP_lower > sqrtP_upper:
         sqrtP_lower, sqrtP_upper = sqrtP_upper, sqrtP_lower
     return int(liquidity * (sqrtP_upper - sqrtP_lower) / Q96)
 
 def quote_exact_input(amount_in, liquidity, current_sqrtP, zero_for_one):
     """
-    Executes an exact input swap.
-    - zero_for_one = True: Swap token0 for token1
-    - zero_for_one = False: Swap token1 for token0
+    Executes an exact input swap, calculating the output amount given an input amount.
+    
+    Parameters:
+        amount_in (int): The amount of input token.
+        liquidity (int): The available liquidity in the pool.
+        current_sqrtP (int): The current square root price.
+        zero_for_one (bool): If True, swapping token0 for token1; otherwise, token1 for token0.
+    
+    Returns:
+        tuple: (new square root price, new price, new tick, output amount)
     """
     if zero_for_one:
         new_sqrtP = int((liquidity * Q96 * current_sqrtP) // (liquidity * Q96 + amount_in * current_sqrtP))
@@ -69,9 +152,16 @@ def quote_exact_input(amount_in, liquidity, current_sqrtP, zero_for_one):
 
 def quote_exact_output(amount_out, liquidity, current_sqrtP, zero_for_one):
     """
-    Executes an exact output swap.
-    - zero_for_one = True: Swap token0 for token1
-    - zero_for_one = False: Swap token1 for token0
+    Executes an exact output swap, calculating the input amount required to get a specific output amount.
+    
+    Parameters:
+        amount_out (int): The desired output amount.
+        liquidity (int): The available liquidity in the pool.
+        current_sqrtP (int): The current square root price.
+        zero_for_one (bool): If True, swapping token0 for token1; otherwise, token1 for token0.
+    
+    Returns:
+        tuple: (new square root price, new price, new tick, input amount)
     """
     if zero_for_one:
         price_difference = (amount_out * Q96) // liquidity
